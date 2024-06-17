@@ -45,8 +45,9 @@ def get_conversational_chain(tools, ques):
         [
             (
                 "system",
-                """You are a helpful assistant. Answer the question as detailed as possible from the provided context, make sure to provide all the details, if the answer is not in
-                provided context just say, "answer is not available in the context", don't provide the wrong answer""",
+                """You are a helpful assistant. Give a comprehensive reply to the question based on the context that has been provided. If the answer is 
+                not in the context, simply state that "answer is not available in the context" and avoid giving the incorrect response.""",
+
             ),
             ("placeholder", "{chat_history}"),
             ("human", "{input}"),
@@ -88,7 +89,7 @@ def user_input(user_question):
 
 def main():
     st.set_page_config("Chat with your CV")
-    st.header("RAG based Chat with CV")
+    st.header("PDF Chat Assistant using RAG")
 
     user_question = st.text_input("Ask a Question from the CV")
 
