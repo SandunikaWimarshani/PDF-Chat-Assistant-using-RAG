@@ -9,6 +9,8 @@ from langchain_community.vectorstores import FAISS
 from langchain.tools.retriever import create_retriever_tool
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.agents import AgentExecutor, create_tool_calling_agent
+import time
+import openai
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,7 +28,10 @@ def pdf_read(pdf_doc):
     return text
 
 def get_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, 
+        chunk_overlap=200
+    )
     chunks = text_splitter.split_text(text)
     return chunks
 
@@ -51,9 +56,29 @@ def get_conversational_chain(tools, ques):
     tool = [tools]
     agent = create_tool_calling_agent(llm, tool, prompt)
     agent_executor = AgentExecutor(agent=agent, tools=tool, verbose=True)
-    response = agent_executor.invoke({"input": ques})
-    print(response)
-    st.write("Reply: ", response['output'])
+    
+    # Retry mechanism with exponential backoff
+    max_retries = 5
+    retry_delay = 1  # initial delay in seconds
+    
+    for attempt in range(max_retries):
+        try:
+            response = agent_executor.invoke({"input": ques})
+            print(response)
+            st.write("Reply: ", response['output'])
+            break
+        except Exception as e:
+            error_message = str(e)
+            if 'RateLimitError' in error_message or 'insufficient_quota' in error_message:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # exponential backoff
+                else:
+                    st.error(f"API rate limit or quota exceeded: {e}")
+                    break
+            else:
+                st.error(f"An unexpected error occurred: {e}")
+                break
 
 def user_input(user_question):
     new_db = FAISS.load_local("faiss_db", embeddings, allow_dangerous_deserialization=True)
